@@ -136,7 +136,7 @@ export function ComponentsMap() {
   }, [recompute]);
 
   return (
-    <div className="w-full overflow-x-auto rounded-2xl border border-[#d8cfc4] bg-white p-4 text-[#2b2b2b] shadow-sm sm:p-6">
+    <div id="components-map-export" className="w-full overflow-x-auto rounded-2xl border border-[#d8cfc4] bg-white p-4 text-[#2b2b2b] shadow-sm sm:p-6">
       <div className="min-w-[860px]">
         <h2 className="mb-4 text-center font-display text-lg font-bold text-[#4a4038]">
           Case 8 · Aryan / Match Day Optimizer — Components Map
