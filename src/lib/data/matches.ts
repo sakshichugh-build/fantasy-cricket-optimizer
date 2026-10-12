@@ -13,6 +13,7 @@ import {
   type IngestedMatch,
   type SquadMember,
 } from "../cricket/ingest";
+import { fetchGeminiSquad } from "../ai/squad";
 import type { Tables } from "../supabase/database.types";
 
 export interface MatchListItem {
@@ -33,6 +34,7 @@ export interface MatchListItem {
   startTime: string | null;
   resultText: string | null;
   hasSquads: boolean;
+  squadSource: string;
   analysed: boolean;
 }
 
@@ -121,6 +123,7 @@ export async function listMatches(filters?: {
     startTime: r.start_time,
     resultText: r.result_text,
     hasSquads: r.has_squads,
+    squadSource: r.squad_source,
     analysed: analysed.has(r.id),
   }));
 }
@@ -153,6 +156,7 @@ export async function getMatchDetail(matchId: string): Promise<MatchListItem | n
     startTime: r.start_time,
     resultText: r.result_text,
     hasSquads: r.has_squads,
+    squadSource: r.squad_source,
     analysed: Boolean(pred),
   };
 }
@@ -206,10 +210,38 @@ export async function ensureMatchSquad(matchId: string): Promise<{
   if (!match) throw new Error("Match not found");
 
   let squad = await loadSquadFromDb(matchId);
-  if (squad.length === 0 && match.externalId) {
-    const res = await getMatchSquad(match.externalId);
-    if (res.data && res.data.length > 0) {
-      squad = await ingestSquads(matchId, res.data);
+  if (squad.length === 0) {
+    // 1. Real squad from the cricket API (preferred).
+    let apiSquads: Awaited<ReturnType<typeof getMatchSquad>>["data"] = [];
+    if (match.externalId) {
+      try {
+        const res = await getMatchSquad(match.externalId);
+        apiSquads = res.data ?? [];
+      } catch {
+        apiSquads = [];
+      }
+    }
+
+    let source = "api";
+    if (apiSquads.length > 0) {
+      squad = await ingestSquads(matchId, apiSquads);
+    } else {
+      // 2. Gemini-estimated squad fallback (labelled in the UI).
+      const aiSquads = await fetchGeminiSquad({
+        matchId,
+        name: match.name,
+        format: match.format,
+        teamA: match.teamA,
+        teamB: match.teamB,
+      });
+      if (aiSquads.length > 0) {
+        squad = await ingestSquads(matchId, aiSquads);
+        source = "ai";
+      }
+    }
+
+    if (squad.length > 0) {
+      await getServiceClient().from("matches").update({ squad_source: source }).eq("id", matchId);
     }
   }
   return { match, squad, squadsAvailable: squad.length > 0 };

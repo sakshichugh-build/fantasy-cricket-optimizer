@@ -51,10 +51,10 @@ export async function seedDatabase(opts: { count?: number } = {}): Promise<SeedR
   const count = opts.count ?? 6;
   const sync = await syncMatches();
 
-  // Only matches that actually have squads available (free tier returns squads
-  // only for these) — avoids slow empty squad fetches that blow the time budget.
+  // All completed matches with two named teams. Squads come from the cricket API
+  // when available, else the Gemini fallback (ensureMatchSquad handles both).
   const completed = (await listMatches({ status: "completed" })).filter(
-    (m) => m.teamA && m.teamB && m.hasSquads,
+    (m) => m.teamA && m.teamB,
   );
 
   const seededMatches: SeedResult["matches"] = [];

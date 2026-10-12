@@ -145,6 +145,11 @@ export function MatchAnalysis({
             <span className="text-[var(--text)]">{match.resultText}</span>
           )}
         </div>
+        {match.squadSource === "ai" && (
+          <p className="chip mt-2 w-fit !border-[var(--warn)] !text-[var(--warn)]">
+            AI-estimated squad — cricket API squad unavailable on free tier
+          </p>
+        )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 rounded-lg border border-line bg-[var(--surface-2)] p-0.5">

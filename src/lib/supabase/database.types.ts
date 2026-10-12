@@ -174,6 +174,7 @@ export type Database = {
           result_text: string | null
           series: string | null
           short_name: string | null
+          squad_source: string
           start_time: string | null
           status: string
           team_a: string | null
@@ -200,6 +201,7 @@ export type Database = {
           result_text?: string | null
           series?: string | null
           short_name?: string | null
+          squad_source?: string
           start_time?: string | null
           status?: string
           team_a?: string | null
@@ -226,6 +228,7 @@ export type Database = {
           result_text?: string | null
           series?: string | null
           short_name?: string | null
+          squad_source?: string
           start_time?: string | null
           status?: string
           team_a?: string | null
