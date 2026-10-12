@@ -222,6 +222,92 @@ async function hydrate(pred: Record<string, unknown>): Promise<SavedPrediction> 
   };
 }
 
+/**
+ * Re-save a manually edited team (swaps / changed C-VC). Re-validates server-side
+ * and refuses to persist an invalid team. Returns the validation result.
+ */
+export async function resaveTeam(
+  predictionId: string,
+  input: { selectedIds: string[]; captainId: string; viceCaptainId: string; mode: RuleMode },
+): Promise<import("../types").ValidationResult> {
+  const supabase = getServiceClient();
+  const { data: rows } = await supabase
+    .from("prediction_players")
+    .select("*")
+    .eq("prediction_id", predictionId);
+  if (!rows) throw new Error("Prediction not found");
+
+  const selectedSet = new Set(input.selectedIds);
+  const selectedRows = rows.filter((r) => selectedSet.has(r.player_id));
+
+  const scored = selectedRows.map((r) => ({
+    playerId: r.player_id,
+    name: r.player_name,
+    team: r.team ?? "",
+    teamShort: null,
+    role: r.role as Dream11Role,
+    credits: Number(r.credits),
+    creditsEstimated: true,
+    battingOrder: r.batting_order,
+    inAnnouncedXI: r.in_announced_xi,
+    isImpactSub: false,
+    baseScore: Number(r.base_score),
+    geminiAdjustment: Number(r.gemini_adjustment),
+    expectedPoints: Number(r.predicted_points),
+    features: {},
+    reason: r.reason,
+    riskFlag: r.risk_flag,
+  }));
+
+  const { validateDream11Team } = await import("../scoring/validator");
+  const validation = validateDream11Team(scored, {
+    mode: input.mode,
+    captainId: input.captainId,
+    viceCaptainId: input.viceCaptainId,
+  });
+  if (!validation.valid) return validation;
+
+  // Persist new selection + C/VC + recomputed totals.
+  for (const r of rows) {
+    const selected = selectedSet.has(r.player_id);
+    const isCap = r.player_id === input.captainId;
+    const isVc = r.player_id === input.viceCaptainId;
+    const mult = isCap ? CAPTAIN_MULTIPLIER : isVc ? VICE_CAPTAIN_MULTIPLIER : 1;
+    await supabase
+      .from("prediction_players")
+      .update({
+        selected,
+        is_captain: selected && isCap,
+        is_vice_captain: selected && isVc,
+        predicted_points_effective: Math.round(Number(r.predicted_points) * mult * 100) / 100,
+      })
+      .eq("id", r.id);
+  }
+
+  const totalExpected = selectedRows.reduce((s, r) => s + Number(r.predicted_points), 0);
+  const capPts = Number(selectedRows.find((r) => r.player_id === input.captainId)?.predicted_points ?? 0);
+  const vcPts = Number(selectedRows.find((r) => r.player_id === input.viceCaptainId)?.predicted_points ?? 0);
+  const totalEffective = totalExpected + capPts + 0.5 * vcPts;
+  const totalCredits = selectedRows.reduce((s, r) => s + Number(r.credits), 0);
+  const teamCounts = new Map<string, number>();
+  for (const r of selectedRows) teamCounts.set(r.team ?? "", (teamCounts.get(r.team ?? "") ?? 0) + 1);
+  const teamSplit = [...teamCounts.values()].sort((a, b) => b - a).join("-");
+
+  await supabase
+    .from("predictions")
+    .update({
+      captain_player_id: input.captainId,
+      vice_captain_player_id: input.viceCaptainId,
+      rule_mode: input.mode,
+      total_predicted_points: Math.round(totalEffective * 100) / 100,
+      total_credits: Math.round(totalCredits * 10) / 10,
+      team_split: teamSplit,
+    })
+    .eq("id", predictionId);
+
+  return validation;
+}
+
 /** Save actual Dream11 points for selected players (manual entry = source of truth). */
 export async function saveActuals(
   predictionId: string,

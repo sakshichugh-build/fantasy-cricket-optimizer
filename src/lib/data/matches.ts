@@ -119,6 +119,38 @@ export async function listMatches(filters?: {
   }));
 }
 
+export async function getMatchDetail(matchId: string): Promise<MatchListItem | null> {
+  const supabase = getServiceClient();
+  const { data: r } = await supabase.from("matches").select("*").eq("id", matchId).maybeSingle();
+  if (!r) return null;
+  const { data: pred } = await supabase
+    .from("predictions")
+    .select("id")
+    .eq("match_id", matchId)
+    .limit(1)
+    .maybeSingle();
+  return {
+    id: r.id,
+    externalId: r.external_id,
+    name: r.name,
+    format: r.format as MatchFormat,
+    status: r.status as MatchListItem["status"],
+    venue: r.venue,
+    venueCity: r.venue_city,
+    series: r.series,
+    teamA: r.team_a,
+    teamAShort: r.team_a_short,
+    teamALogo: r.team_a_logo,
+    teamB: r.team_b,
+    teamBShort: r.team_b_short,
+    teamBLogo: r.team_b_logo,
+    startTime: r.start_time,
+    resultText: r.result_text,
+    hasSquads: r.has_squads,
+    analysed: Boolean(pred),
+  };
+}
+
 export async function getMatchRow(matchId: string): Promise<IngestedMatch | null> {
   const supabase = getServiceClient();
   const { data } = await supabase.from("matches").select("*").eq("id", matchId).maybeSingle();
