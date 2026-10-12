@@ -121,6 +121,7 @@ export interface ComputeResult {
 export async function computeAndStoreInsights(opts?: {
   minSample?: number;
   biasThreshold?: number;
+  skipExplain?: boolean;
 }): Promise<ComputeResult> {
   const supabase = getServiceClient();
   const obs = await buildObservations();
@@ -129,7 +130,7 @@ export async function computeAndStoreInsights(opts?: {
     biasThreshold: opts?.biasThreshold ?? 6,
   });
 
-  const explanations = await explain(insights);
+  const explanations = opts?.skipExplain ? new Map<string, string>() : await explain(insights);
 
   // Replace previous OPEN insights only.
   await supabase.from("insights").delete().eq("status", "open");

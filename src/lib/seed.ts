@@ -49,7 +49,11 @@ export async function seedDatabase(opts: { count?: number } = {}): Promise<SeedR
   const count = opts.count ?? 6;
   const sync = await syncMatches();
 
-  const completed = (await listMatches({ status: "completed" })).filter((m) => m.teamA && m.teamB);
+  // Only matches that actually have squads available (free tier returns squads
+  // only for these) — avoids slow empty squad fetches that blow the time budget.
+  const completed = (await listMatches({ status: "completed" })).filter(
+    (m) => m.teamA && m.teamB && m.hasSquads,
+  );
 
   const seededMatches: SeedResult["matches"] = [];
   const rnd = mulberry32(42);
@@ -79,7 +83,7 @@ export async function seedDatabase(opts: { count?: number } = {}): Promise<SeedR
     }
   }
 
-  const insights = await computeAndStoreInsights({ minSample: 5, biasThreshold: 6 });
+  const insights = await computeAndStoreInsights({ minSample: 5, biasThreshold: 6, skipExplain: true });
 
   return {
     synced: sync.synced,
