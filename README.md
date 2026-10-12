@@ -108,6 +108,6 @@ npm run seed                 # seed real recent matches + run the pipeline
 
 ## Deliverables
 
-- **Live URL:** _added after deploy_
+- **Live URL:** https://fantasy-cricket-optimizer-rouge.vercel.app
 - **Repo:** https://github.com/sakshichugh-build/fantasy-cricket-optimizer
 - **Components Map:** `/components-map` in the app, plus `COMPONENTS_MAP.md` and `docs/components-map.png`.
