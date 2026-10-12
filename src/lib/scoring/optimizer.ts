@@ -57,7 +57,7 @@ export function optimizeTeam(
   }
 
   const variables: Record<string, Record<string, number>> = {};
-  const binaries: Record<string, number> = {};
+  const binaries: Record<string, 1> = {};
   const varToPlayer = new Map<string, ScoredPlayer>();
 
   players.forEach((p, i) => {
