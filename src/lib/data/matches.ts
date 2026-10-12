@@ -60,14 +60,20 @@ export async function syncMatches(): Promise<{
 }> {
   try {
     const current = await getCurrentMatches(0);
-    let list: Awaited<ReturnType<typeof getMatchesList>> | null = null;
-    try {
-      list = await getMatchesList(0);
-    } catch {
-      /* optional */
+    const listPages: Awaited<ReturnType<typeof getMatchesList>>["data"] = [];
+    // Pull several pages of the fixtures list to capture more matches that
+    // already have squads (the free tier only returns squads for those).
+    for (const offset of [0, 25, 50, 75]) {
+      try {
+        const page = await getMatchesList(offset);
+        listPages.push(...page.data);
+        if (page.data.length < 25) break;
+      } catch {
+        break;
+      }
     }
     const seen = new Set<string>();
-    const all = [...current.data, ...(list?.data ?? [])];
+    const all = [...current.data, ...listPages];
     let synced = 0;
     for (const m of all) {
       if (!m.id || seen.has(m.id)) continue;

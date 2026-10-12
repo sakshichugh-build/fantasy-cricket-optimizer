@@ -25,8 +25,10 @@ function mulberry32(seed: number) {
  * are clearly stored with is_seed = true (not user-entered).
  */
 function seededActual(role: Dream11Role, predicted: number, rnd: () => number): number {
-  const roleBias: Record<Dream11Role, number> = { BOWL: -13, WK: 8, BAT: 2, AR: 0 };
-  const noise = (rnd() - 0.5) * 18;
+  // Deliberate, detectable bias: the model over-rates batters and under-rates
+  // wicket-keepers — surfaced by the learning loop as a weight suggestion.
+  const roleBias: Record<Dream11Role, number> = { BAT: -11, WK: 7, BOWL: -4, AR: 1 };
+  const noise = (rnd() - 0.5) * 16;
   const val = predicted + roleBias[role] + noise;
   return Math.max(0, Math.round(val));
 }
@@ -64,7 +66,14 @@ export async function seedDatabase(opts: { count?: number } = {}): Promise<SeedR
       const { match, squad, squadsAvailable } = await ensureMatchSquad(m.id);
       if (!squadsAvailable || squad.length < 13) continue;
 
-      const analysis = await analyzeMatch(match, squad, { mode: "safe", skipGemini: true });
+      // Safe mode first; fall back to Relaxed if a sparse squad makes Safe
+      // infeasible (common for associate-nation role data).
+      let analysis;
+      try {
+        analysis = await analyzeMatch(match, squad, { mode: "safe", skipGemini: true });
+      } catch {
+        analysis = await analyzeMatch(match, squad, { mode: "relaxed", skipGemini: true });
+      }
       const predictionId = await savePrediction(analysis, { isSeed: true });
 
       const saved = await getPredictionForMatch(m.id);
