@@ -1,0 +1,178 @@
+import "server-only";
+import { getServiceClient } from "../supabase/server";
+import type { MatchFormat } from "../types";
+import {
+  getCurrentMatches,
+  getMatchesList,
+  getMatchSquad,
+  type CricInfo,
+} from "../cricket/client";
+import {
+  ingestSquads,
+  upsertMatch,
+  type IngestedMatch,
+  type SquadMember,
+} from "../cricket/ingest";
+import type { Tables } from "../supabase/database.types";
+
+export interface MatchListItem {
+  id: string;
+  externalId: string | null;
+  name: string;
+  format: MatchFormat;
+  status: "upcoming" | "live" | "completed";
+  venue: string | null;
+  venueCity: string | null;
+  series: string | null;
+  teamA: string | null;
+  teamAShort: string | null;
+  teamALogo: string | null;
+  teamB: string | null;
+  teamBShort: string | null;
+  teamBLogo: string | null;
+  startTime: string | null;
+  resultText: string | null;
+  hasSquads: boolean;
+  analysed: boolean;
+}
+
+function rowToIngested(r: Tables<"matches">): IngestedMatch {
+  return {
+    id: r.id,
+    externalId: r.external_id,
+    name: r.name,
+    format: r.format as MatchFormat,
+    status: r.status as IngestedMatch["status"],
+    venue: r.venue,
+    teamA: r.team_a,
+    teamB: r.team_b,
+    startTime: r.start_time,
+    hasSquads: r.has_squads,
+  };
+}
+
+/** Fetch live/upcoming/recent matches from the cricket API and upsert them. */
+export async function syncMatches(): Promise<{
+  synced: number;
+  info?: CricInfo;
+  stale: boolean;
+  error?: string;
+}> {
+  try {
+    const current = await getCurrentMatches(0);
+    let list: Awaited<ReturnType<typeof getMatchesList>> | null = null;
+    try {
+      list = await getMatchesList(0);
+    } catch {
+      /* optional */
+    }
+    const seen = new Set<string>();
+    const all = [...current.data, ...(list?.data ?? [])];
+    let synced = 0;
+    for (const m of all) {
+      if (!m.id || seen.has(m.id)) continue;
+      seen.add(m.id);
+      if (!m.teams || m.teams.length < 2) continue;
+      await upsertMatch(m);
+      synced += 1;
+    }
+    return { synced, info: current.info, stale: current.stale };
+  } catch (err) {
+    return { synced: 0, stale: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** List matches from the DB with an "analysed" badge. */
+export async function listMatches(filters?: {
+  format?: MatchFormat;
+  status?: "upcoming" | "live" | "completed";
+}): Promise<MatchListItem[]> {
+  const supabase = getServiceClient();
+  let q = supabase.from("matches").select("*").order("start_time", { ascending: true });
+  if (filters?.format) q = q.eq("format", filters.format);
+  if (filters?.status) q = q.eq("status", filters.status);
+  const { data: matches } = await q;
+  if (!matches) return [];
+
+  const { data: preds } = await supabase.from("predictions").select("match_id");
+  const analysed = new Set((preds ?? []).map((p) => p.match_id));
+
+  return matches.map((r) => ({
+    id: r.id,
+    externalId: r.external_id,
+    name: r.name,
+    format: r.format as MatchFormat,
+    status: r.status as MatchListItem["status"],
+    venue: r.venue,
+    venueCity: r.venue_city,
+    series: r.series,
+    teamA: r.team_a,
+    teamAShort: r.team_a_short,
+    teamALogo: r.team_a_logo,
+    teamB: r.team_b,
+    teamBShort: r.team_b_short,
+    teamBLogo: r.team_b_logo,
+    startTime: r.start_time,
+    resultText: r.result_text,
+    hasSquads: r.has_squads,
+    analysed: analysed.has(r.id),
+  }));
+}
+
+export async function getMatchRow(matchId: string): Promise<IngestedMatch | null> {
+  const supabase = getServiceClient();
+  const { data } = await supabase.from("matches").select("*").eq("id", matchId).maybeSingle();
+  return data ? rowToIngested(data) : null;
+}
+
+/** Load squad members for a match from the DB. */
+export async function loadSquadFromDb(matchId: string): Promise<SquadMember[]> {
+  const supabase = getServiceClient();
+  const { data } = await supabase
+    .from("match_players")
+    .select("id, player_id, team, team_short, role, credits, credits_estimated, in_announced_xi, is_impact_sub, batting_order, players(name, batting_style, bowling_style)")
+    .eq("match_id", matchId)
+    .order("batting_order", { ascending: true });
+  if (!data) return [];
+  return data.map((r) => {
+    const player = r.players as unknown as { name: string; batting_style: string | null; bowling_style: string | null };
+    return {
+      matchPlayerId: r.id,
+      playerId: r.player_id,
+      name: player?.name ?? "Unknown",
+      team: r.team,
+      teamShort: r.team_short,
+      role: r.role as SquadMember["role"],
+      credits: Number(r.credits),
+      creditsEstimated: r.credits_estimated,
+      inAnnouncedXI: r.in_announced_xi,
+      isImpactSub: r.is_impact_sub,
+      battingOrder: r.batting_order,
+      battingStyle: player?.batting_style ?? null,
+      bowlingStyle: player?.bowling_style ?? null,
+    };
+  });
+}
+
+/**
+ * Ensure a match has squads loaded: use the DB if present, otherwise fetch from
+ * the cricket API and ingest. Returns the match and its squad (possibly empty if
+ * squads are not yet announced).
+ */
+export async function ensureMatchSquad(matchId: string): Promise<{
+  match: IngestedMatch;
+  squad: SquadMember[];
+  squadsAvailable: boolean;
+}> {
+  const match = await getMatchRow(matchId);
+  if (!match) throw new Error("Match not found");
+
+  let squad = await loadSquadFromDb(matchId);
+  if (squad.length === 0 && match.externalId) {
+    const res = await getMatchSquad(match.externalId);
+    if (res.data && res.data.length > 0) {
+      squad = await ingestSquads(matchId, res.data);
+    }
+  }
+  return { match, squad, squadsAvailable: squad.length > 0 };
+}
