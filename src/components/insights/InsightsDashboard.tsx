@@ -113,7 +113,7 @@ export function InsightsDashboard({ data }: { data: Dash }) {
               </h3>
               <div className="h-60 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data.errorOverTime} margin={{ left: -18, right: 12, top: 4, bottom: 28 }}>
+                  <LineChart data={data.errorOverTime} margin={{ left: 4, right: 18, top: 4, bottom: 28 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
                     <XAxis
                       dataKey="label"
