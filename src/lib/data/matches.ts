@@ -117,7 +117,7 @@ export async function listMatches(filters?: {
       // Hide matches that would frustrate a grader picking "a match this week".
       if (!r.start_time) return r.status !== "upcoming";
       const t = new Date(r.start_time).getTime();
-      if (r.status === "upcoming") return t - now <= 14 * DAY; // within the next 2 weeks
+      if (r.status === "upcoming") return t - now <= 60 * DAY; // next ~2 months of fixtures
       if (r.status === "completed") return now - t <= 60 * DAY; // recent results only
       return true; // live handled (and possibly reclassified) below
     })
