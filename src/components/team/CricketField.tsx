@@ -3,7 +3,7 @@
 import { Crown, Shield } from "lucide-react";
 import type { SavedPredictionPlayer } from "@/lib/data/predictions";
 import type { Dream11Role } from "@/lib/types";
-import { ROLE_COLOR, ROLE_LABEL } from "@/lib/format";
+import { ROLE_COLOR, ROLE_LABEL, ROLE_ICON } from "@/lib/format";
 
 const ROWS: { role: Dream11Role; y: number }[] = [
   { role: "WK", y: 16 },
@@ -86,6 +86,12 @@ export function CricketField({
         {[240, 250, 260].map((x) => (
           <line key={`b${x}`} x1={x} y1="434" x2={x} y2="450" stroke="#5a3b1a" strokeWidth="2.4" />
         ))}
+        {/* cricket ball with seam */}
+        <g>
+          <circle cx="291" cy="405" r="7" fill="#b4322a" stroke="#7d201b" strokeWidth="1" />
+          <path d="M287.5 400 Q291 405 287.5 410" fill="none" stroke="#f1e7d2" strokeWidth="1" />
+          <path d="M294.5 400 Q291 405 294.5 410" fill="none" stroke="#f1e7d2" strokeWidth="1" />
+        </g>
 
         {/* floodlight pylons (top corners) */}
         {[40, 460].map((x) => (
@@ -136,7 +142,8 @@ export function CricketField({
                     </span>
                   )}
                 </div>
-                <span className="mt-1 max-w-full truncate rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                <span className="mt-1 flex max-w-full items-center gap-0.5 truncate rounded-full bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  <span aria-hidden className="text-[9px]">{ROLE_ICON[role]}</span>
                   {lastName(p.name)}
                 </span>
               </div>
