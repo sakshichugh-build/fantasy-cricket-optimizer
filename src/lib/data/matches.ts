@@ -122,6 +122,9 @@ export async function listMatches(filters?: {
 
   return matches
     .filter((r) => {
+      // Drop malformed / to-be-confirmed fixtures.
+      if (!r.team_a || !r.team_b) return false;
+      if (/^tb[cd]$/i.test(r.team_a.trim()) || /^tb[cd]$/i.test(r.team_b.trim())) return false;
       // Only matches Dream11 would actually list (drop associate minnow
       // qualifiers / minor domestic divisions).
       if (!isDream11Relevant(r.name, r.team_a, r.team_b)) return false;
