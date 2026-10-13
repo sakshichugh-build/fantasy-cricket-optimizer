@@ -100,10 +100,18 @@ export function parseContextFromText(text: string, format: MatchFormat): Omit<Ma
  * news) via Gemini + Google Search. Cached 1h. Falls back to NEUTRAL_CONTEXT
  * when grounding fails (e.g. quota), so analysis can always proceed.
  */
-export async function getMatchContext(input: ContextInput): Promise<MatchContext> {
+export async function getMatchContext(
+  input: ContextInput,
+  opts: { skipGrounding?: boolean } = {},
+): Promise<MatchContext> {
   const cacheKey = `ctx:${input.matchId}`;
   try {
     const { data } = await withCache<MatchContext>(cacheKey, "gemini", 3600, async () => {
+      // Fast path (e.g. live cold analysis under a function timeout): skip the
+      // slow/variable Google-Search grounding and estimate conditions directly.
+      if (opts.skipGrounding) {
+        return await getStructuredContext(input);
+      }
       const when = input.startTime ? new Date(input.startTime).toUTCString() : "the upcoming date";
       const prompt = `You are a cricket analyst. For the match "${input.name}" (${input.format}) at ${input.venue ?? "the venue"}, starting around ${when}, give a concise live briefing covering:
 - the pitch report and how it is expected to play (spin-friendly, pace/seam-friendly, flat/batting, or low-scoring)

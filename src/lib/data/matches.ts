@@ -231,9 +231,10 @@ export async function ensureMatchSquad(matchId: string): Promise<{
 
   let squad = await loadSquadFromDb(matchId);
   if (squad.length === 0) {
-    // 1. Real squad from the cricket API (preferred).
+    // 1. Real squad from the cricket API (preferred) — only when the fixture is
+    // flagged as having a squad, to avoid a wasted slow call on the cold path.
     let apiSquads: Awaited<ReturnType<typeof getMatchSquad>>["data"] = [];
-    if (match.externalId) {
+    if (match.externalId && match.hasSquads) {
       try {
         const res = await getMatchSquad(match.externalId);
         apiSquads = res.data ?? [];

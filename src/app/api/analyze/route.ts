@@ -47,15 +47,20 @@ export async function POST(req: Request) {
     const [squadRes, context] = await Promise.all([
       ensureMatchSquad(parsed.data.matchId),
       wantGemini
-        ? getMatchContext({
-            matchId: matchRow.id,
-            name: matchRow.name,
-            format: matchRow.format,
-            venue: matchRow.venue,
-            teamA: matchRow.teamA,
-            teamB: matchRow.teamB,
-            startTime: matchRow.startTime,
-          })
+        ? getMatchContext(
+            {
+              matchId: matchRow.id,
+              name: matchRow.name,
+              format: matchRow.format,
+              venue: matchRow.venue,
+              teamA: matchRow.teamA,
+              teamB: matchRow.teamB,
+              startTime: matchRow.startTime,
+            },
+            // Live analysis runs under a 60s function limit — use the fast
+            // structured-context path (grounding is reserved for seeding).
+            { skipGrounding: true },
+          )
         : Promise.resolve(undefined),
     ]);
     const { match, squad, squadsAvailable } = squadRes;
