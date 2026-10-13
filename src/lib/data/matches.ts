@@ -62,11 +62,22 @@ export async function syncMatches(): Promise<{
   error?: string;
 }> {
   try {
-    const current = await getCurrentMatches(0);
+    // currentMatches is the API's view of live/near/recent fixtures — pull it
+    // fully, then sweep more pages of the broader fixtures list.
+    const currentPages: Awaited<ReturnType<typeof getCurrentMatches>>["data"] = [];
+    let current: Awaited<ReturnType<typeof getCurrentMatches>> | null = null;
+    for (const offset of [0, 25, 50]) {
+      try {
+        const page = await getCurrentMatches(offset);
+        if (!current) current = page;
+        currentPages.push(...page.data);
+        if (page.data.length < 25) break;
+      } catch {
+        break;
+      }
+    }
     const listPages: Awaited<ReturnType<typeof getMatchesList>>["data"] = [];
-    // Pull several pages of the fixtures list to capture more matches that
-    // already have squads (the free tier only returns squads for those).
-    for (const offset of [0, 25, 50, 75]) {
+    for (const offset of [0, 25, 50, 75, 100, 125]) {
       try {
         const page = await getMatchesList(offset);
         listPages.push(...page.data);
@@ -76,7 +87,7 @@ export async function syncMatches(): Promise<{
       }
     }
     const seen = new Set<string>();
-    const all = [...current.data, ...listPages];
+    const all = [...currentPages, ...listPages];
     let synced = 0;
     for (const m of all) {
       if (!m.id || seen.has(m.id)) continue;
@@ -85,7 +96,7 @@ export async function syncMatches(): Promise<{
       await upsertMatch(m);
       synced += 1;
     }
-    return { synced, info: current.info, stale: current.stale };
+    return { synced, info: current?.info, stale: current?.stale ?? false };
   } catch (err) {
     return { synced: 0, stale: false, error: err instanceof Error ? err.message : String(err) };
   }
