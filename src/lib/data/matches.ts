@@ -14,6 +14,7 @@ import {
   type SquadMember,
 } from "../cricket/ingest";
 import { fetchGeminiSquad } from "../ai/squad";
+import { isDream11Relevant } from "../cricket/relevance";
 import type { Tables } from "../supabase/database.types";
 
 export interface MatchListItem {
@@ -110,6 +111,9 @@ export async function listMatches(filters?: {
 
   return matches
     .filter((r) => {
+      // Only matches Dream11 would actually list (drop associate minnow
+      // qualifiers / minor domestic divisions).
+      if (!isDream11Relevant(r.name, r.team_a, r.team_b)) return false;
       // Hide matches that would frustrate a grader picking "a match this week".
       if (!r.start_time) return r.status !== "upcoming";
       const t = new Date(r.start_time).getTime();
