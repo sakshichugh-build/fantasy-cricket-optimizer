@@ -34,7 +34,7 @@ async function getStructuredContext(input: ContextInput): Promise<MatchContext> 
     responseSchema: structuredContextResponse,
     validator: structuredContextSchema,
     temperature: 0.4,
-    timeoutMs: 30000,
+    timeoutMs: 16000,
     retries: 1,
   });
   return {
@@ -116,6 +116,8 @@ Keep it factual and under 180 words.`;
       try {
         const grounded = await generateGrounded(prompt, {
           system: "You summarise real, current cricket conditions. Be specific to this venue and match.",
+          timeoutMs: 22000,
+          retries: 1,
         });
         if (grounded.text && grounded.text.trim()) {
           const parsed = parseContextFromText(grounded.text, input.format);

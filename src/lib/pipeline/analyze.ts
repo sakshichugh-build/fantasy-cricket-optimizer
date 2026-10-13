@@ -40,6 +40,8 @@ export interface AnalyzeOptions {
   mode: RuleMode;
   /** Skip the grounding/reasoning Gemini calls (pure deterministic). */
   skipGemini?: boolean;
+  /** Pre-fetched context (lets the route fetch squad + context in parallel). */
+  context?: MatchContext;
 }
 
 /**
@@ -51,8 +53,10 @@ export async function analyzeMatch(
   squad: SquadMember[],
   opts: AnalyzeOptions,
 ): Promise<AnalysisResult> {
-  // 1. Live context (grounded) — or neutral fallback.
-  const context: MatchContext = opts.skipGemini
+  // 1. Live context (grounded) — pre-fetched, neutral, or fetched here.
+  const context: MatchContext = opts.context
+    ? opts.context
+    : opts.skipGemini
     ? { format: match.format, pitchType: "unknown", battingFriendliness: 0, avgFirstInningsScore: null, weatherNote: null, summary: "Gemini disabled for this run.", sources: [], grounded: false }
     : await getMatchContext({
         matchId: match.id,

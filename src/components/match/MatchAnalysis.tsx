@@ -98,10 +98,23 @@ export function MatchAnalysis({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ matchId: match.id, mode }),
       });
-      const data = await res.json();
       if (stepTimer.current) clearInterval(stepTimer.current);
-      if (!res.ok) {
-        setError(data.error || "Analysis failed");
+      // Responses may not be JSON (e.g. a platform 504 page), so parse defensively.
+      const text = await res.text();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let data: any = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+      if (!res.ok || !data) {
+        setError(
+          data?.error ||
+            (res.status === 504 || res.status === 503 || res.status === 500
+              ? "The first analysis took too long (cold start). Tap “Re-analyse” — the squad is now cached, so it finishes in a few seconds."
+              : "Analysis failed. Please try again."),
+        );
         setAnalyzing(false);
         return;
       }
