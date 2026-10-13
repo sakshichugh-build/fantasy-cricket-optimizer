@@ -77,6 +77,19 @@ export function MatchAnalysis({
 
   useEffect(() => () => void (stepTimer.current && clearInterval(stepTimer.current)), []);
 
+  // Warm the squad in the background when an un-analysed match loads, so the
+  // first "Analyse" only does context + reasoning and fits the function timeout.
+  const prepped = useRef(false);
+  useEffect(() => {
+    if (prepped.current || prediction) return;
+    prepped.current = true;
+    fetch("/api/matches/prep", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ matchId: match.id }),
+    }).catch(() => {});
+  }, [prediction, match.id]);
+
   const s = statusMeta(match.status);
   // Lock re-analysis once actual points exist, so the saved team + learning data
   // can never be silently overwritten.
