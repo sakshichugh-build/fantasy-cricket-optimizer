@@ -1,8 +1,53 @@
 import "server-only";
-import { generateGrounded } from "./gemini";
+import { z } from "zod";
+import { generateGrounded, generateStructured } from "./gemini";
 import { withCache } from "../data/cache";
 import { NEUTRAL_CONTEXT, type MatchContext, type PitchType } from "../data/features";
 import type { MatchFormat } from "../types";
+
+/** Structured (non-grounded) context estimate, used when Google Search grounding
+ * is unavailable (quota/entitlement). Clearly labelled as an AI estimate. */
+const structuredContextSchema = z.object({
+  pitchType: z.enum(["spin", "pace", "batting", "bowling", "balanced"]),
+  battingFriendliness: z.number().min(-1).max(1),
+  avgFirstInningsScore: z.number().nullable(),
+  weatherNote: z.string().nullable(),
+  summary: z.string(),
+});
+
+const structuredContextResponse = {
+  type: "object",
+  properties: {
+    pitchType: { type: "string", enum: ["spin", "pace", "batting", "bowling", "balanced"] },
+    battingFriendliness: { type: "number" },
+    avgFirstInningsScore: { type: "number" },
+    weatherNote: { type: "string" },
+    summary: { type: "string" },
+  },
+  required: ["pitchType", "battingFriendliness", "summary"],
+};
+
+async function getStructuredContext(input: ContextInput): Promise<MatchContext> {
+  const data = await generateStructured({
+    contents: `Give a concise conditions briefing for the cricket match "${input.name}" (${input.format}) at ${input.venue ?? "the venue"}. Based on the venue and format, estimate: pitchType (spin/pace/batting/bowling/balanced), battingFriendliness (-1 bowler-friendly .. +1 flat batting track), a typical first-innings par score, likely weather, and a 2-3 sentence summary of how it should play and what it means for selection.`,
+    system: "You are a cricket pitch and conditions analyst. Give a realistic, venue-aware estimate.",
+    responseSchema: structuredContextResponse,
+    validator: structuredContextSchema,
+    temperature: 0.4,
+    timeoutMs: 30000,
+    retries: 1,
+  });
+  return {
+    format: input.format,
+    pitchType: data.pitchType,
+    battingFriendliness: data.battingFriendliness,
+    avgFirstInningsScore: data.avgFirstInningsScore ?? null,
+    weatherNote: data.weatherNote ?? null,
+    summary: `${data.summary} (AI estimate — not live-grounded.)`,
+    sources: [],
+    grounded: false,
+  };
+}
 
 export interface ContextInput {
   matchId: string;
@@ -67,19 +112,27 @@ export async function getMatchContext(input: ContextInput): Promise<MatchContext
 - toss tendencies (bat/bowl first) and any team news / injuries / likely XI changes
 Keep it factual and under 180 words.`;
 
-      const grounded = await generateGrounded(prompt, {
-        system: "You summarise real, current cricket conditions. Be specific to this venue and match.",
-      });
+      // 1. Prefer Google Search grounded context.
+      try {
+        const grounded = await generateGrounded(prompt, {
+          system: "You summarise real, current cricket conditions. Be specific to this venue and match.",
+        });
+        if (grounded.text && grounded.text.trim()) {
+          const parsed = parseContextFromText(grounded.text, input.format);
+          return {
+            format: input.format,
+            ...parsed,
+            summary: grounded.text.trim(),
+            sources: grounded.sources.slice(0, 6),
+            grounded: true,
+          } satisfies MatchContext;
+        }
+      } catch {
+        /* grounding unavailable — fall through to structured estimate */
+      }
 
-      const parsed = parseContextFromText(grounded.text, input.format);
-      const ctx: MatchContext = {
-        format: input.format,
-        ...parsed,
-        summary: grounded.text.trim() || NEUTRAL_CONTEXT.summary,
-        sources: grounded.sources.slice(0, 6),
-        grounded: true,
-      };
-      return ctx;
+      // 2. Structured (non-grounded) estimate, so the UI isn't left with "Unknown".
+      return await getStructuredContext(input);
     });
     return data;
   } catch {

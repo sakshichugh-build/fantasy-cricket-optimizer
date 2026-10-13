@@ -9,8 +9,8 @@ The live, interactive version is at **`/components-map`** in the app. A rendered
 | Actor (role) | Trigger | Input | Context | Processing | AI | Output |
 |---|---|---|---|---|---|---|
 | **Aryan** (User) | Picks an upcoming match in the app | | | | | |
-| **Cricket Data API** (Live data) | | Fetches squads, playing XI, recent player stats | | | | |
-| **Gemini API** (Context · Search grounding) | | | Pulls pitch report, weather, venue history, team / injury news | | | |
+| **Cricket Data API** (Live data) | | Fetches fixtures, live scores & results, squads when available | | | | |
+| **Gemini API** (Context · Search grounding) | | | Estimates squad/XI when the API lacks it; pitch, weather & conditions | | | |
 | **Supabase** (Memory) | | | Supplies active scoring weights + past error patterns | | | |
 | **Scoring Engine** (Code) | | | | Scores each player with weights · Optimizer picks best 11 · Validator checks Dream11 rules | | |
 | **Gemini API** (Reasoning) | | | | | Writes match-specific reasons · Picks C & VC with justification | |

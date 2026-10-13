@@ -324,8 +324,8 @@ function PlayerChip({
         <div className="min-w-0">
           <p className="truncate text-xs font-bold">{p.name}</p>
           <p className="text-[10px] text-muted">
-            {p.team} · {p.credits.toFixed(1)}cr
-            {!p.inAnnouncedXI && <span className="text-[var(--warn)]"> · unconf.</span>}
+            {p.team} · {p.credits.toFixed(1)}cr<span className="opacity-60"> est</span>
+            {!p.inAnnouncedXI && <span className="text-[var(--warn)]"> · guessed</span>}
           </p>
         </div>
         <span className="font-display text-sm font-bold text-accent">{p.predictedPoints.toFixed(0)}</span>

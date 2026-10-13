@@ -113,6 +113,7 @@ export async function upsertMatch(m: CricMatch): Promise<IngestedMatch> {
 export async function ingestSquads(
   matchId: string,
   squads: CricSquadTeam[],
+  opts: { source?: "api" | "ai" } = {},
 ): Promise<SquadMember[]> {
   const supabase = getServiceClient();
   const members: SquadMember[] = [];
@@ -124,7 +125,9 @@ export async function ingestSquads(
     for (let i = 0; i < team.players.length; i++) {
       const p = team.players[i];
       const role = mapRole(p.role, p.bowlingStyle);
-      const inAnnouncedXI = likelyXI;
+      // AI-estimated squads are not confirmed line-ups, so never mark them as
+      // the announced XI.
+      const inAnnouncedXI = opts.source === "ai" ? false : likelyXI;
 
       // upsert player (prefer external id, else by lowercased name)
       let playerId: string;

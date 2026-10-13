@@ -4,6 +4,9 @@ import { ensureMatchSquad } from "@/lib/data/matches";
 import { analyzeMatch } from "@/lib/pipeline/analyze";
 import { savePrediction, getPredictionForMatch } from "@/lib/data/predictions";
 
+export const ANALYZE_LOCK_MESSAGE =
+  "This match already has saved actual points — re-analysing is locked to protect the learning data. Clear the actuals first, or analyse a different match.";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -27,6 +30,12 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Lock: never overwrite a saved team that already has actual points.
+    const existing = await getPredictionForMatch(parsed.data.matchId);
+    if (existing && existing.players.some((p) => p.actualPoints != null)) {
+      return NextResponse.json({ error: ANALYZE_LOCK_MESSAGE, locked: true }, { status: 409 });
+    }
+
     const { match, squad, squadsAvailable } = await ensureMatchSquad(parsed.data.matchId);
     if (!squadsAvailable) {
       return NextResponse.json(

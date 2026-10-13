@@ -37,8 +37,8 @@ interface Lane {
 
 const GRID1: Lane[] = [
   { actor: "Aryan", role: "User", boxes: [{ id: "g1-aryan", stage: "Trigger", tone: "blue", lines: ["Picks an upcoming", "match in the app"] }] },
-  { actor: "Cricket Data API", role: "Live data", boxes: [{ id: "g1-cric", stage: "Input", tone: "blue", lines: ["Fetches squads,", "playing XI,", "recent player stats"] }] },
-  { actor: "Gemini API", role: "Context · Search grounding", boxes: [{ id: "g1-gem-ctx", stage: "Context", tone: "green", lines: ["Pulls pitch report,", "weather, venue history,", "team / injury news"] }] },
+  { actor: "Cricket Data API", role: "Live data", boxes: [{ id: "g1-cric", stage: "Input", tone: "blue", lines: ["Fetches fixtures,", "live scores & results,", "squads when available"] }] },
+  { actor: "Gemini API", role: "Context · Search grounding", boxes: [{ id: "g1-gem-ctx", stage: "Context", tone: "green", lines: ["Estimates squad/XI when", "API lacks it; pitch,", "weather & conditions"] }] },
   { actor: "Supabase", role: "Memory", boxes: [{ id: "g1-supa", stage: "Context", tone: "green", lines: ["Supplies active scoring", "weights + past", "error patterns"] }] },
   { actor: "Scoring Engine", role: "Code", boxes: [{ id: "g1-score", stage: "Processing", tone: "yellow", lines: ["Scores each player", "Optimizer picks best 11", "Validator checks rules"] }] },
   { actor: "Gemini API", role: "Reasoning", boxes: [{ id: "g1-gem-rsn", stage: "AI", tone: "pink", lines: ["Writes match-specific", "reasons · Picks C & VC", "with justification"] }] },

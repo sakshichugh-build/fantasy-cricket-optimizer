@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Sparkles,
@@ -78,6 +78,12 @@ export function MatchAnalysis({
   useEffect(() => () => void (stepTimer.current && clearInterval(stepTimer.current)), []);
 
   const s = statusMeta(match.status);
+  // Lock re-analysis once actual points exist, so the saved team + learning data
+  // can never be silently overwritten.
+  const locked = useMemo(
+    () => prediction?.players.some((p) => p.actualPoints != null) ?? false,
+    [prediction],
+  );
 
   async function analyze() {
     setAnalyzing(true);
@@ -168,16 +174,33 @@ export function MatchAnalysis({
               </button>
             ))}
           </div>
-          <button onClick={analyze} disabled={analyzing} className="btn btn-primary text-sm">
+          <button
+            onClick={analyze}
+            disabled={analyzing || locked}
+            title={locked ? "Locked — this match has saved actual points" : undefined}
+            className="btn btn-primary text-sm"
+          >
             <Sparkles size={16} />
-            {analyzing ? "Analysing…" : prediction ? "Re-analyse" : "Analyse this match"}
+            {analyzing
+              ? "Analysing…"
+              : locked
+                ? "Locked (has actual points)"
+                : prediction
+                  ? "Re-analyse"
+                  : "Analyse this match"}
           </button>
-          {match.status === "completed" && prediction && (
+          {prediction && (
             <Link href={`/match/${match.id}/actuals`} className="btn btn-ghost text-sm">
-              <ClipboardList size={16} /> Enter actual points
+              <ClipboardList size={16} /> {locked ? "View / edit actual points" : "Enter actual points"}
             </Link>
           )}
         </div>
+        {locked && (
+          <p className="mt-2 text-xs text-[var(--warn)]">
+            🔒 Re-analysis is locked because this team has actual points saved. This protects the
+            learning data from being overwritten.
+          </p>
+        )}
         <p className="mt-2 text-xs text-muted">
           Safe mode builds a team valid under both rule interpretations — submittable with zero
           corrections.

@@ -43,6 +43,7 @@ export interface InsightRow {
 
 export interface InsightsDashboard {
   hasData: boolean;
+  hasSeededActuals: boolean;
   totalPredictionsScored: number;
   totalObservations: number;
   overall: { mae: number; avgResidual: number; bias: "over" | "under" | "none" };
@@ -85,6 +86,12 @@ export async function getInsightsDashboard(): Promise<InsightsDashboard> {
   const supabase = getServiceClient();
   const weightHistory = await getWeightHistory();
 
+  const { count: seededCount } = await supabase
+    .from("actual_points")
+    .select("*", { count: "exact", head: true })
+    .eq("is_seed", true);
+  const hasSeededActuals = (seededCount ?? 0) > 0;
+
   const { data: insightRows } = await supabase
     .from("insights")
     .select("*")
@@ -112,7 +119,7 @@ export async function getInsightsDashboard(): Promise<InsightsDashboard> {
     .order("created_at", { ascending: true });
 
   if (!preds || preds.length === 0) {
-    return emptyDashboard(weightHistory, openInsights, appliedInsights);
+    return emptyDashboard(weightHistory, openInsights, appliedInsights, 0, hasSeededActuals);
   }
 
   const matchIds = [...new Set(preds.map((p) => p.match_id))];
@@ -184,7 +191,7 @@ export async function getInsightsDashboard(): Promise<InsightsDashboard> {
   }
 
   if (rows.length === 0) {
-    return emptyDashboard(weightHistory, openInsights, appliedInsights, preds.length);
+    return emptyDashboard(weightHistory, openInsights, appliedInsights, preds.length, hasSeededActuals);
   }
 
   const overallAgg = agg(rows);
@@ -230,7 +237,8 @@ export async function getInsightsDashboard(): Promise<InsightsDashboard> {
     const actualTotal = round1(group.reduce((s, r) => s + r.actual, 0));
     const { mae } = agg(group);
     return {
-      label: group[0].matchName.slice(0, 22),
+      // "Team vs Team" (before the first comma) keeps axis labels short.
+      label: group[0].matchName.split(",")[0].slice(0, 18),
       predictedTotal,
       actualTotal,
       mae,
@@ -249,6 +257,7 @@ export async function getInsightsDashboard(): Promise<InsightsDashboard> {
 
   return {
     hasData: true,
+    hasSeededActuals,
     totalPredictionsScored: byPred.size,
     totalObservations: rows.length,
     overall: { ...overallAgg, bias: overallBias },
@@ -273,9 +282,11 @@ function emptyDashboard(
   openInsights: InsightRow[],
   appliedInsights: InsightRow[],
   totalPredictionsScored = 0,
+  hasSeededActuals = false,
 ): InsightsDashboard {
   return {
     hasData: false,
+    hasSeededActuals,
     totalPredictionsScored,
     totalObservations: 0,
     overall: { mae: 0, avgResidual: 0, bias: "none" },

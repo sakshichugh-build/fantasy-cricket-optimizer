@@ -66,13 +66,14 @@ export async function seedDatabase(opts: { count?: number } = {}): Promise<SeedR
       const { match, squad, squadsAvailable } = await ensureMatchSquad(m.id);
       if (!squadsAvailable || squad.length < 13) continue;
 
-      // Safe mode first; fall back to Relaxed if a sparse squad makes Safe
-      // infeasible (common for associate-nation role data).
+      // Full pipeline WITH Gemini (grounded context + match-specific reasoning)
+      // so seeded teams show real reasoning. Safe mode first; fall back to Relaxed
+      // if a sparse squad makes Safe infeasible.
       let analysis;
       try {
-        analysis = await analyzeMatch(match, squad, { mode: "safe", skipGemini: true });
+        analysis = await analyzeMatch(match, squad, { mode: "safe" });
       } catch {
-        analysis = await analyzeMatch(match, squad, { mode: "relaxed", skipGemini: true });
+        analysis = await analyzeMatch(match, squad, { mode: "relaxed" });
       }
       const predictionId = await savePrediction(analysis, { isSeed: true });
 
@@ -92,7 +93,7 @@ export async function seedDatabase(opts: { count?: number } = {}): Promise<SeedR
     }
   }
 
-  const insights = await computeAndStoreInsights({ minSample: 5, biasThreshold: 6, skipExplain: true });
+  const insights = await computeAndStoreInsights({ minSample: 5, biasThreshold: 6 });
 
   return {
     synced: sync.synced,

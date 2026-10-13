@@ -74,18 +74,36 @@ export function InsightsDashboard({ data }: { data: Dash }) {
           {/* overview */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Tile label="Player outcomes" value={String(data.totalObservations)} />
-            <Tile label="Mean abs error" value={data.overall.mae.toFixed(1)} accent />
+            <Tile label="Mean abs error" value={`${data.overall.mae.toFixed(1)} pts`} accent />
             <Tile
               label="Overall bias"
-              value={data.overall.bias === "none" ? "balanced" : data.overall.bias}
-              sub={`${data.overall.avgResidual >= 0 ? "+" : ""}${data.overall.avgResidual} avg`}
+              value={
+                data.overall.bias === "over"
+                  ? "Over-rating"
+                  : data.overall.bias === "under"
+                    ? "Under-rating"
+                    : "Balanced"
+              }
+              sub={`${data.overall.avgResidual >= 0 ? "+" : ""}${data.overall.avgResidual} pts avg (actual − predicted)`}
             />
             <Tile
-              label="C/VC in top-2"
+              label="C or VC in team's top-2"
               value={data.cvcEitherHitRate != null ? `${Math.round(data.cvcEitherHitRate * 100)}%` : "—"}
-              sub={data.captainHitRate != null ? `C ${Math.round(data.captainHitRate * 100)}%` : undefined}
+              sub={
+                data.captainHitRate != null
+                  ? `C ${Math.round(data.captainHitRate * 100)}% · VC ${Math.round((data.viceCaptainHitRate ?? 0) * 100)}%`
+                  : undefined
+              }
             />
           </div>
+
+          {data.hasSeededActuals && (
+            <p className="rounded-lg border border-line bg-[var(--surface-2)] px-3 py-2 text-xs text-muted">
+              ⚠ Some actual points shown are <span className="text-[var(--warn)]">seeded demo data</span>{" "}
+              (generated to demonstrate the learning loop), not real Dream11 scores. Enter real points on
+              the match pages to replace them.
+            </p>
+          )}
 
           {/* error over time */}
           {data.errorOverTime.length > 0 && (
@@ -95,9 +113,16 @@ export function InsightsDashboard({ data }: { data: Dash }) {
               </h3>
               <div className="h-60 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={data.errorOverTime} margin={{ left: -18, right: 8, top: 4 }}>
+                  <LineChart data={data.errorOverTime} margin={{ left: -18, right: 12, top: 4, bottom: 28 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" />
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted)" }} />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 10, fill: "var(--muted)" }}
+                      interval={0}
+                      angle={-18}
+                      textAnchor="end"
+                      height={54}
+                    />
                     <YAxis tick={{ fontSize: 10, fill: "var(--muted)" }} />
                     <Tooltip
                       contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, fontSize: 12 }}

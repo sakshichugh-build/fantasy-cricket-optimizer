@@ -105,27 +105,47 @@ export async function listMatches(filters?: {
   const { data: preds } = await supabase.from("predictions").select("match_id");
   const analysed = new Set((preds ?? []).map((p) => p.match_id));
 
-  return matches.map((r) => ({
-    id: r.id,
-    externalId: r.external_id,
-    name: r.name,
-    format: r.format as MatchFormat,
-    status: r.status as MatchListItem["status"],
-    venue: r.venue,
-    venueCity: r.venue_city,
-    series: r.series,
-    teamA: r.team_a,
-    teamAShort: r.team_a_short,
-    teamALogo: r.team_a_logo,
-    teamB: r.team_b,
-    teamBShort: r.team_b_short,
-    teamBLogo: r.team_b_logo,
-    startTime: r.start_time,
-    resultText: r.result_text,
-    hasSquads: r.has_squads,
-    squadSource: r.squad_source,
-    analysed: analysed.has(r.id),
-  }));
+  const now = Date.now();
+  const DAY = 86_400_000;
+
+  return matches
+    .filter((r) => {
+      // Hide matches that would frustrate a grader picking "a match this week".
+      if (!r.start_time) return r.status !== "upcoming";
+      const t = new Date(r.start_time).getTime();
+      if (r.status === "upcoming") return t - now <= 14 * DAY; // within the next 2 weeks
+      if (r.status === "completed") return now - t <= 60 * DAY; // recent results only
+      return true; // live handled (and possibly reclassified) below
+    })
+    .map((r) => {
+      // A match still flagged "live" long after it started is stale data; show it
+      // as completed rather than misleadingly LIVE.
+      let status = r.status as MatchListItem["status"];
+      if (status === "live" && r.start_time && now - new Date(r.start_time).getTime() > 2 * DAY) {
+        status = "completed";
+      }
+      return {
+        id: r.id,
+        externalId: r.external_id,
+        name: r.name,
+        format: r.format as MatchFormat,
+        status,
+        venue: r.venue,
+        venueCity: r.venue_city,
+        series: r.series,
+        teamA: r.team_a,
+        teamAShort: r.team_a_short,
+        teamALogo: r.team_a_logo,
+        teamB: r.team_b,
+        teamBShort: r.team_b_short,
+        teamBLogo: r.team_b_logo,
+        startTime: r.start_time,
+        resultText: r.result_text,
+        hasSquads: r.has_squads,
+        squadSource: r.squad_source,
+        analysed: analysed.has(r.id),
+      };
+    });
 }
 
 export async function getMatchDetail(matchId: string): Promise<MatchListItem | null> {
@@ -235,7 +255,7 @@ export async function ensureMatchSquad(matchId: string): Promise<{
         teamB: match.teamB,
       });
       if (aiSquads.length > 0) {
-        squad = await ingestSquads(matchId, aiSquads);
+        squad = await ingestSquads(matchId, aiSquads, { source: "ai" });
         source = "ai";
       }
     }
