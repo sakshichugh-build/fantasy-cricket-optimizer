@@ -35,6 +35,18 @@ export default async function HomePage() {
           </div>
         </div>
         <div className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rounded-full bg-[var(--accent)] opacity-10 blur-3xl" />
+        {/* stadium field motif */}
+        <div className="pointer-events-none absolute inset-x-0 -bottom-20 h-44 bg-[radial-gradient(ellipse_at_top,rgba(47,217,138,0.16),transparent_65%)]" />
+        <svg
+          viewBox="0 0 400 90"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-20 w-full"
+          aria-hidden
+        >
+          <ellipse cx="200" cy="150" rx="280" ry="110" fill="none" stroke="var(--accent)" strokeWidth="1.5" opacity="0.28" />
+          <ellipse cx="200" cy="165" rx="190" ry="85" fill="none" stroke="var(--accent)" strokeWidth="1" strokeDasharray="5 7" opacity="0.2" />
+          <line x1="200" y1="60" x2="200" y2="90" stroke="var(--accent)" strokeWidth="1" opacity="0.25" />
+        </svg>
       </section>
 
       {loadError && (

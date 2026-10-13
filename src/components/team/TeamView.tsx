@@ -6,7 +6,8 @@ import type { SavedPrediction, SavedPredictionPlayer } from "@/lib/data/predicti
 import type { Dream11Role, RuleMode, ScoredPlayer } from "@/lib/types";
 import { validateDream11Team } from "@/lib/scoring/validator";
 import { getRuleSet } from "@/lib/dream11Rules";
-import { ROLE_LABEL, riskColor } from "@/lib/format";
+import { ROLE_LABEL, ROLE_COLOR, riskColor } from "@/lib/format";
+import { CricketField } from "./CricketField";
 
 const ROLE_ORDER: Dream11Role[] = ["WK", "BAT", "AR", "BOWL"];
 
@@ -169,43 +170,54 @@ export function TeamView({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        {/* pitch layout */}
-        <div className="card relative overflow-hidden p-3 sm:p-5">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.07]"
-            style={{
-              background:
-                "repeating-linear-gradient(90deg, transparent 0 48px, var(--accent) 48px 49px)",
-            }}
-          />
-          <div className="relative flex flex-col gap-4">
-            {ROLE_ORDER.map((role) => {
-              const players = selected.filter((p) => p.role === role);
-              return (
-                <div key={role} className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="chip">{ROLE_LABEL[role]}</span>
-                    <span className="text-xs text-muted">
-                      {players.length} · {rules.roles[role].min}–{rules.roles[role].max}
-                    </span>
+        {/* immersive ground + interactive roster */}
+        <div className="flex flex-col gap-4">
+          <CricketField players={selected} captainId={captainId} viceCaptainId={viceCaptainId} />
+
+          <div className="card p-3 sm:p-5">
+            <p className="mb-3 text-xs text-muted">
+              Your XI by role — tap <span className="text-accent">C</span> /{" "}
+              <span style={{ color: "var(--saffron)" }}>VC</span> on a player, or “Swap in” a bench
+              player then tap one here to replace.
+            </p>
+            <div className="flex flex-col gap-4">
+              {ROLE_ORDER.map((role) => {
+                const players = selected.filter((p) => p.role === role);
+                return (
+                  <div key={role} className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="chip !text-[var(--text)]"
+                        style={{ borderColor: ROLE_COLOR[role], color: ROLE_COLOR[role] }}
+                      >
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: ROLE_COLOR[role] }}
+                        />
+                        {ROLE_LABEL[role]}
+                      </span>
+                      <span className="text-xs text-muted">
+                        {players.length} · {rules.roles[role].min}–{rules.roles[role].max}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {players.map((p) => (
+                        <PlayerChip
+                          key={p.playerId}
+                          p={p}
+                          isCaptain={captainId === p.playerId}
+                          isVice={viceCaptainId === p.playerId}
+                          onCaptain={() => setCaptain(p.playerId)}
+                          onVice={() => setVice(p.playerId)}
+                          swapTarget={!!pendingIn}
+                          onSwapOut={() => swapOut(p.playerId)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {players.map((p) => (
-                      <PlayerChip
-                        key={p.playerId}
-                        p={p}
-                        isCaptain={captainId === p.playerId}
-                        isVice={viceCaptainId === p.playerId}
-                        onCaptain={() => setCaptain(p.playerId)}
-                        onVice={() => setVice(p.playerId)}
-                        swapTarget={!!pendingIn}
-                        onSwapOut={() => swapOut(p.playerId)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -256,6 +268,7 @@ export function TeamView({
                 <li
                   key={p.playerId}
                   className="flex items-center justify-between gap-2 rounded-lg bg-[var(--surface-2)] px-2.5 py-1.5"
+                  style={{ borderLeft: `3px solid ${ROLE_COLOR[p.role]}` }}
                 >
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold">{p.name}</p>
@@ -317,9 +330,13 @@ function PlayerChip({
 }) {
   return (
     <div
-      className="group relative flex flex-col gap-1 rounded-xl border border-line bg-[var(--surface-2)] p-2.5"
+      className="group relative flex flex-col gap-1 rounded-xl border border-line bg-[var(--surface-2)] p-2.5 pl-3"
       style={isCaptain ? { borderColor: "var(--accent)" } : isVice ? { borderColor: "var(--saffron)" } : undefined}
     >
+      <span
+        className="absolute bottom-2 left-1 top-2 w-1 rounded-full"
+        style={{ background: ROLE_COLOR[p.role] }}
+      />
       <div className="flex items-start justify-between gap-1">
         <div className="min-w-0">
           <p className="truncate text-xs font-bold">{p.name}</p>

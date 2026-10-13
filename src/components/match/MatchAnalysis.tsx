@@ -17,7 +17,7 @@ import {
 import type { MatchListItem } from "@/lib/data/matches";
 import type { SavedPrediction } from "@/lib/data/predictions";
 import type { RuleMode } from "@/lib/types";
-import { formatIST, pitchLabel, statusMeta } from "@/lib/format";
+import { formatIST, pitchLabel, statusMeta, formatColor } from "@/lib/format";
 import { TeamView } from "@/components/team/TeamView";
 
 interface Meta {
@@ -148,7 +148,9 @@ export function MatchAnalysis({
       {/* header */}
       <div className="card p-5">
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="chip !text-[var(--text)]">{match.format}</span>
+          <span className="chip" style={{ color: formatColor(match.format), borderColor: formatColor(match.format) }}>
+            {match.format}
+          </span>
           <span className="chip" style={{ color: s.color, borderColor: s.color }}>
             {s.label}
           </span>
@@ -165,7 +167,7 @@ export function MatchAnalysis({
           )}
         </div>
         {match.squadSource === "ai" && (
-          <p className="chip mt-2 w-fit !border-[var(--warn)] !text-[var(--warn)]">
+          <p className="chip mt-2 w-fit max-w-full !whitespace-normal !border-[var(--warn)] !text-left !text-[var(--warn)]">
             AI-estimated squad — cricket API squad unavailable on free tier
           </p>
         )}

@@ -46,6 +46,33 @@ export const ROLE_SHORT: Record<Dream11Role, string> = {
   BOWL: "BOWL",
 };
 
+/** Consistent role colour-coding used across the whole app. */
+export const ROLE_COLOR: Record<Dream11Role, string> = {
+  WK: "#f6b63d", // gloves — amber/gold
+  BAT: "#4da3ff", // willow — sky blue
+  AR: "#2fd98a", // all-round — emerald
+  BOWL: "#ff7a66", // the ball — coral
+};
+
+export const ROLE_ICON: Record<Dream11Role, string> = {
+  WK: "🧤",
+  BAT: "🏏",
+  AR: "⚡",
+  BOWL: "🎯",
+};
+
+/** Colour-code match formats. */
+export const FORMAT_COLOR: Record<string, string> = {
+  T20: "#2fd98a",
+  ODI: "#4da3ff",
+  TEST: "#e4584a",
+  T10: "#f6b63d",
+};
+
+export function formatColor(format: string): string {
+  return FORMAT_COLOR[format] ?? "#8a97b8";
+}
+
 export function riskColor(risk?: string | null): string {
   switch ((risk || "").toLowerCase()) {
     case "high":

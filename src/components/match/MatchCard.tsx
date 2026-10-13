@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2, MapPin } from "lucide-react";
 import type { MatchListItem } from "@/lib/data/matches";
-import { formatIST, relativeToStart, statusMeta } from "@/lib/format";
+import { formatIST, relativeToStart, statusMeta, formatColor } from "@/lib/format";
 
 function TeamRow({ name, short, logo }: { name: string | null; short: string | null; logo: string | null }) {
   return (
@@ -28,7 +28,9 @@ export function MatchCard({ match }: { match: MatchListItem }) {
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="chip !text-[var(--text)]">{match.format}</span>
+          <span className="chip" style={{ color: formatColor(match.format), borderColor: formatColor(match.format) }}>
+            {match.format}
+          </span>
           <span className="chip" style={{ color: s.color, borderColor: s.color }}>
             {match.status === "live" && (
               <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: s.color }} />
