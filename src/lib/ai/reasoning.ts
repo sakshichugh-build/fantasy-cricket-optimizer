@@ -114,8 +114,8 @@ For every player return: a match-specific reason, a risk flag (low/medium/high),
       responseSchema,
       validator: reasoningSchema,
       temperature: 0.45,
-      timeoutMs: 26000,
-      retries: 1,
+      timeoutMs: 22000,
+      retries: 0,
     });
     return { reasoning, used: true, model: GEMINI_MODEL };
   } catch (err) {

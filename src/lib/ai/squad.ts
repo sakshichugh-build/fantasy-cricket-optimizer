@@ -84,8 +84,8 @@ export async function fetchGeminiSquad(input: GeminiSquadInput): Promise<CricSqu
         responseSchema,
         validator: squadSchema,
         temperature: 0.5,
-        timeoutMs: 20000,
-        retries: 1,
+        timeoutMs: 18000,
+        retries: 0,
       });
 
       return result.teams.map((t) => ({
